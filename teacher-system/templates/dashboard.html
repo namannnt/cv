@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard — AttentionAI</title>
+    <link rel="stylesheet" href="/static/css/teacher.css">
+</head>
+<body data-api-token="{{ api_token }}">
+    <canvas id="matrixCanvas"></canvas>
+    <div class="scan-line"></div>
+
+    <nav class="navbar">
+        <div class="logo">[🎓 Teacher Dashboard]</div>
+        <div class="nav-right">
+            <div class="live-pill"><span class="live-dot"></span> LIVE</div>
+            <div class="clock" id="clock">--:--:--</div>
+        </div>
+    </nav>
+
+    <!-- CLASS OVERVIEW -->
+    <div class="page-wrap">
+        <div class="overview-grid">
+            <div class="ov-card" style="--accent:#00e5ff">
+                <div class="ov-icon">👥</div>
+                <div class="ov-val" id="totalStudents">0</div>
+                <div class="ov-label">Students Online</div>
+            </div>
+            <div class="ov-card" style="--accent:#00ff88">
+                <div class="ov-icon">📊</div>
+                <div class="ov-val" id="classAvg">--</div>
+                <div class="ov-label">Class Avg Score</div>
+            </div>
+            <div class="ov-card" style="--accent:#ff1744">
+                <div class="ov-icon">🔥</div>
+                <div class="ov-val" id="distractedCount">0</div>
+                <div class="ov-label">Distracted</div>
+            </div>
+            <div class="ov-card" style="--accent:#ff6b35">
+                <div class="ov-icon">😴</div>
+                <div class="ov-val" id="fatiguedCount">0</div>
+                <div class="ov-label">Fatigued</div>
+            </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div class="alerts-bar" id="alertsBar"></div>
+
+        <!-- STUDENT TABLE -->
+        <div class="table-wrap">
+            <div class="table-header">
+                <h2>🧠 Live Student Monitor</h2>
+                <div class="refresh-info">Auto-refresh: <span class="cyan">1s</span></div>
+            </div>
+            <table class="student-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Score</th>
+                        <th>State</th>
+                        <th>Fatigue</th>
+                        <th>Gaze</th>
+                        <th>Blinks</th>
+                        <th>Last Update</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                    <tr class="empty-row">
+                        <td colspan="7">Waiting for students to connect...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- SCORE BARS -->
+        <div class="score-bars-section">
+            <h3 class="section-title">📈 Score Overview</h3>
+            <div id="scoreBars"></div>
+        </div>
+    </div>
+
+    <div class="critical-banner" id="criticalBanner">⚠ CLASS ATTENTION CRITICAL</div>
+    <script src="/static/js/teacher.js"></script>
+</body>
+</html>

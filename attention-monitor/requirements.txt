@@ -1,0 +1,14 @@
+opencv-python
+mediapipe
+numpy
+pandas
+matplotlib
+requests
+flask
+fastapi
+uvicorn[standard]
+websockets
+pydantic
+pytest
+python-dotenv
+slowapi

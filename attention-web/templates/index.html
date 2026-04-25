@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AttentionAI — Neural Focus Monitor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <canvas id="matrixCanvas"></canvas>
+    <canvas id="nebulaCanvas"></canvas>
+    <canvas id="particleCanvas"></canvas>
+    <div id="cursorGlow"></div>
+    <div class="scan-line"></div>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="logo">
+            <span class="logo-bracket">[</span>🧠 AttentionAI<span class="logo-bracket">]</span>
+        </div>
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="showTab('home')">Home</button>
+            <button class="tab-btn" onclick="showTab('dashboard')">Dashboard</button>
+            <button class="tab-btn" onclick="showTab('coach')">AI Coach</button>
+            <button class="tab-btn" onclick="showTab('gamification')">🏆 Progress</button>
+        </div>
+        <div class="status-pill">
+            <span class="status-dot"></span> SYSTEM ACTIVE
+        </div>
+    </nav>
+    <!-- ══════════════ HOME TAB ══════════════ -->
+    <div id="tab-home" class="tab-content active">
+        <section class="hero">
+            <div class="hero-content">
+                <div class="badge">
+                    <span class="badge-dot"></span> NEURAL MONITORING ACTIVE
+                </div>
+                <h1>
+                    <span class="line1">Track Your</span>
+                    <span class="line2 glitch" data-text="FOCUS">FOCUS</span>
+                    <span class="line3">In Real-Time</span>
+                </h1>
+                <p>AI-powered cognitive monitoring using 468 facial landmarks. Detect fatigue, quantify attention, and unlock your peak performance.</p>
+                <div class="hero-btns">
+                    <button class="cta-btn primary" id="startBtn" onclick="toggleSession()">
+                        <span id="startBtnText">▶ Start Session</span>
+                        <span id="startBtnIcon">🧠</span>
+                    </button>
+                    <div class="session-mode-wrap">
+                        <span class="select-label">MODE</span>
+                        <select id="modeSelect" class="mode-select">
+                            <option value="1">📖 Reading</option>
+                            <option value="2">🧮 Problem Solving</option>
+                            <option value="3">🎓 Lecture</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="session-status-bar" id="sessionStatusBar" style="display:none">
+                    <span class="status-dot"></span>
+                    <span id="sessionStatusText">Session running... Press ESC in the CV window to stop.</span>
+                    <button class="stop-btn" onclick="stopSession()">■ Stop</button>
+                </div>
+                <div class="stats-row">
+                    <div class="mini-stat"><span class="mini-val" data-target="468">0</span><span class="mini-label">Landmarks</span></div>
+                    <div class="mini-divider"></div>
+                    <div class="mini-stat"><span class="mini-val" data-target="30">0</span><span class="mini-label">FPS</span></div>
+                    <div class="mini-divider"></div>
+                    <div class="mini-stat"><span class="mini-val" data-target="4">0</span><span class="mini-label">Signals</span></div>
+                    <div class="mini-divider"></div>
+                    <div class="mini-stat"><span class="mini-val" data-target="100">0</span><span class="mini-label">Max Score</span></div>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="orb-container">
+                    <div class="orb orb1"></div>
+                    <div class="orb orb2"></div>
+                    <div class="orb orb3"></div>
+                    <div class="face-ring">
+                        <div class="ring r1"></div>
+                        <div class="ring r2"></div>
+                        <div class="ring r3"></div>
+                        <div class="face-icon">👁</div>
+                    </div>
+                    <div class="orbit-dot od1"></div>
+                    <div class="orbit-dot od2"></div>
+                    <div class="orbit-dot od3"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="features-grid">
+                <div class="feat-card" style="--delay:0s">
+                    <div class="feat-icon-wrap"><span>👁</span></div>
+                    <h3>Face Mesh</h3>
+                    <p>468 landmark real-time tracking with MediaPipe neural network</p>
+                    <div class="feat-bar"><div class="feat-fill" style="--w:95%"></div></div>
+                </div>
+                <div class="feat-card" style="--delay:0.1s">
+                    <div class="feat-icon-wrap"><span>🎯</span></div>
+                    <h3>Attention Score</h3>
+                    <p>Live 0–100 cognitive attention quantification engine</p>
+                    <div class="feat-bar"><div class="feat-fill" style="--w:88%"></div></div>
+                </div>
+                <div class="feat-card" style="--delay:0.2s">
+                    <div class="feat-icon-wrap"><span>😴</span></div>
+                    <h3>Fatigue AI</h3>
+                    <p>Multi-signal fatigue prediction using EAR + gaze + session time</p>
+                    <div class="feat-bar"><div class="feat-fill" style="--w:82%"></div></div>
+                </div>
+                <div class="feat-card" style="--delay:0.3s">
+                    <div class="feat-icon-wrap"><span>🏆</span></div>
+                    <h3>Gamification</h3>
+                    <p>Streaks, badges, and AI coaching to keep you motivated daily</p>
+                    <div class="feat-bar"><div class="feat-fill" style="--w:90%"></div></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ══════════════ DASHBOARD TAB ══════════════ -->
+    <div id="tab-dashboard" class="tab-content">
+        <div class="page-wrap">
+            <div class="page-header">
+                <div>
+                    <h2>Session <span class="highlight">Dashboard</span></h2>
+                    <p class="page-sub">Neural attention analytics</p>
+                </div>
+                <div class="session-select-wrap">
+                    <span class="select-label">SESSION FILE</span>
+                    <select id="sessionSelect" onchange="loadSession()">
+                        {% for s in sessions %}
+                        <option value="{{ s }}">{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card" style="--accent:#00e5ff;--delay:0s">
+                    <div class="metric-bg-glow"></div>
+                    <span class="metric-icon">📊</span>
+                    <div class="metric-value" id="avgScore">--</div>
+                    <div class="metric-label">Avg Score</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="avgBar"></div></div>
+                </div>
+                <div class="metric-card" style="--accent:#a259ff;--delay:0.05s">
+                    <div class="metric-bg-glow"></div>
+                    <span class="metric-icon">🎯</span>
+                    <div class="metric-value" id="quality">--</div>
+                    <div class="metric-label">Quality Score</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="qualBar"></div></div>
+                </div>
+                <div class="metric-card" style="--accent:#00ff88;--delay:0.1s">
+                    <div class="metric-bg-glow"></div>
+                    <span class="metric-icon">✅</span>
+                    <div class="metric-value" id="focusTime">--</div>
+                    <div class="metric-label">Focus Time</div>
+                </div>
+                <div class="metric-card" style="--accent:#ff6b35;--delay:0.15s">
+                    <div class="metric-bg-glow"></div>
+                    <span class="metric-icon">🔥</span>
+                    <div class="metric-value" id="distractions">--</div>
+                    <div class="metric-label">Distractions</div>
+                </div>
+                <div class="metric-card" style="--accent:#ff1744;--delay:0.2s">
+                    <div class="metric-bg-glow"></div>
+                    <span class="metric-icon">😴</span>
+                    <div class="metric-value" id="fatigue">--</div>
+                    <div class="metric-label">Fatigue Events</div>
+                </div>
+                <div class="metric-card" style="--accent:#ffd600;--delay:0.25s">
+                    <div class="metric-bg-glow"></div>
+                    <span class="metric-icon">⏱</span>
+                    <div class="metric-value" id="duration">--</div>
+                    <div class="metric-label">Duration</div>
+                </div>
+            </div>
+
+            <div class="insight-bar">
+                <span class="insight-icon">⚡</span>
+                <span id="decayText">Select a session to load data</span>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card wide">
+                    <div class="chart-header">
+                        <h3>📈 Attention & Fatigue Timeline</h3>
+                        <div class="chart-legend">
+                            <span class="leg cyan">● Attention</span>
+                            <span class="leg orange">● Fatigue</span>
+                        </div>
+                    </div>
+                    <canvas id="timelineChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>🧠 State Distribution</h3>
+                    <div class="donut-wrap">
+                        <canvas id="stateChart"></canvas>
+                        <div class="donut-center" id="donutCenter">--</div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>👀 Gaze Distribution</h3>
+                    <canvas id="gazeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- FEEDBACK + CALIBRATION -->
+            <div class="feedback-section" id="feedbackSection" style="display:none">
+                <h3 class="section-title">🔄 Help the System Learn</h3>
+                <div class="feedback-card">
+                    <div class="feedback-question">
+                        <span class="fq-label">Were you attentive overall?</span>
+                        <div class="fq-btns">
+                            <button class="fq-btn yes" onclick="setFeedback('attention', true)">✅ Yes</button>
+                            <button class="fq-btn no"  onclick="setFeedback('attention', false)">❌ No</button>
+                        </div>
+                    </div>
+                    <div class="feedback-question">
+                        <span class="fq-label">Did you feel fatigued?</span>
+                        <div class="fq-btns">
+                            <button class="fq-btn yes" onclick="setFeedback('fatigue', true)">✅ Yes</button>
+                            <button class="fq-btn no"  onclick="setFeedback('fatigue', false)">❌ No</button>
+                        </div>
+                    </div>
+                    <button class="submit-feedback-btn" id="submitFeedbackBtn"
+                            onclick="submitFeedback()" disabled>Submit Feedback</button>
+                    <div class="calibration-status" id="calibrationStatus"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════ AI COACH TAB ══════════════ -->
+    <div id="tab-coach" class="tab-content">
+        <div class="page-wrap">
+            <div class="page-header">
+                <div>
+                    <h2>AI <span class="highlight">Coach</span></h2>
+                    <p class="page-sub">Personalized behavior insights</p>
+                </div>
+            </div>
+            <div class="coach-grid" id="coachGrid">
+                <div class="coach-empty">
+                    <div class="coach-empty-icon">🧠</div>
+                    <p>Load a session from Dashboard to get AI feedback</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════ GAMIFICATION TAB ══════════════ -->
+    <div id="tab-gamification" class="tab-content">
+        <div class="page-wrap">
+            <div class="page-header">
+                <div>
+                    <h2>Your <span class="highlight">Progress</span></h2>
+                    <p class="page-sub">Streaks, medals & achievements</p>
+                </div>
+            </div>
+
+            <div class="gam-stats-grid" id="gamStats">
+                <div class="gam-stat-card" style="--accent:#ff6b35">
+                    <div class="gam-stat-icon">🔥</div>
+                    <div class="gam-stat-val" id="streakVal">--</div>
+                    <div class="gam-stat-label">Day Streak</div>
+                    <div class="streak-flames" id="streakFlames"></div>
+                </div>
+                <div class="gam-stat-card" style="--accent:#00e5ff">
+                    <div class="gam-stat-icon">📊</div>
+                    <div class="gam-stat-val" id="sessionsVal">--</div>
+                    <div class="gam-stat-label">Total Sessions</div>
+                </div>
+                <div class="gam-stat-card" style="--accent:#a259ff">
+                    <div class="gam-stat-icon">🏆</div>
+                    <div class="gam-stat-val" id="highScoreVal">--</div>
+                    <div class="gam-stat-label">High Score</div>
+                </div>
+                <div class="gam-stat-card" style="--accent:#00ff88">
+                    <div class="gam-stat-icon">⏱</div>
+                    <div class="gam-stat-val" id="focusMinVal">--</div>
+                    <div class="gam-stat-label">Total Focus (min)</div>
+                </div>
+            </div>
+
+            <div class="badges-section">
+                <h3 class="section-title">🏅 Achievements</h3>
+                <div class="badges-grid" id="badgesGrid">
+                    <div class="loading-badges">Loading achievements...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

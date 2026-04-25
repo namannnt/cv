@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — AttentionAI</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dash-page">
+    <canvas id="matrixCanvas"></canvas>
+    <div id="particles"></div>
+
+    <nav class="navbar">
+        <div class="logo">
+            <span class="logo-bracket">[</span>🧠 AttentionAI<span class="logo-bracket">]</span>
+        </div>
+        <a href="/" class="nav-btn"><span class="btn-glow"></span>Home</a>
+    </nav>
+
+    <div class="dashboard">
+        <div class="dash-header">
+            <div>
+                <h2>Session <span class="highlight">Dashboard</span></h2>
+                <p class="dash-sub">Neural attention analytics</p>
+            </div>
+            <div class="session-select-wrap">
+                <span class="select-label">SESSION</span>
+                <select id="sessionSelect" onchange="loadSession()">
+                    {% for s in sessions %}
+                    <option value="{{ s }}">{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card" style="--accent:#00e5ff;--delay:0s">
+                <div class="metric-bg-glow"></div>
+                <span class="metric-icon">📊</span>
+                <div class="metric-value" id="avgScore">--</div>
+                <div class="metric-label">Avg Score</div>
+                <div class="metric-bar"><div class="metric-bar-fill" id="avgBar"></div></div>
+            </div>
+            <div class="metric-card" style="--accent:#a259ff;--delay:0.05s">
+                <div class="metric-bg-glow"></div>
+                <span class="metric-icon">🎯</span>
+                <div class="metric-value" id="quality">--</div>
+                <div class="metric-label">Quality Score</div>
+                <div class="metric-bar"><div class="metric-bar-fill" id="qualBar"></div></div>
+            </div>
+            <div class="metric-card" style="--accent:#00ff88;--delay:0.1s">
+                <div class="metric-bg-glow"></div>
+                <span class="metric-icon">✅</span>
+                <div class="metric-value" id="focusTime">--</div>
+                <div class="metric-label">Focus Time</div>
+            </div>
+            <div class="metric-card" style="--accent:#ff6b35;--delay:0.15s">
+                <div class="metric-bg-glow"></div>
+                <span class="metric-icon">🔥</span>
+                <div class="metric-value" id="distractions">--</div>
+                <div class="metric-label">Distractions</div>
+            </div>
+            <div class="metric-card" style="--accent:#ff1744;--delay:0.2s">
+                <div class="metric-bg-glow"></div>
+                <span class="metric-icon">😴</span>
+                <div class="metric-value" id="fatigue">--</div>
+                <div class="metric-label">Fatigue Events</div>
+            </div>
+            <div class="metric-card" style="--accent:#ffd600;--delay:0.25s">
+                <div class="metric-bg-glow"></div>
+                <span class="metric-icon">⏱</span>
+                <div class="metric-value" id="duration">--</div>
+                <div class="metric-label">Duration</div>
+            </div>
+        </div>
+
+        <!-- insight -->
+        <div class="insight-bar" id="decayBar">
+            <span class="insight-icon">⚡</span>
+            <span id="decayText">Loading session data...</span>
+        </div>
+
+        <!-- charts -->
+        <div class="charts-grid">
+            <div class="chart-card wide">
+                <div class="chart-header">
+                    <h3>📈 Attention & Fatigue Timeline</h3>
+                    <div class="chart-legend">
+                        <span class="leg cyan">● Attention</span>
+                        <span class="leg orange">● Fatigue</span>
+                    </div>
+                </div>
+                <canvas id="timelineChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>🧠 State Distribution</h3>
+                <div class="donut-wrap">
+                    <canvas id="stateChart"></canvas>
+                    <div class="donut-center" id="donutCenter">--</div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>👀 Gaze Distribution</h3>
+                <canvas id="gazeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

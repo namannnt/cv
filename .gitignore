@@ -1,0 +1,29 @@
+# Environment secrets — never commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+*.egg-info/
+
+# Data files
+attention-monitor/data/logs/*.csv
+attention-monitor/data/attention.db
+attention-monitor/data/user_stats.json
+attention-monitor/data/user_feedback.json
+attention-monitor/data/calibration.json
+teacher-system/class_data.db
+teacher-system/teacher_server.log
+attention-monitor/data/logs/attention_monitor.log
+
+# Model file (download separately)
+attention-monitor/models/face_landmarker.task
+
+# IDE
+.vscode/
+.idea/
+*.swp
