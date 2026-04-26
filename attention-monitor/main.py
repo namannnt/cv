@@ -172,7 +172,11 @@ while True:
                                                        landmarks, frame.shape)
         gaze_right = gaze_detector.get_gaze_direction(right_eye, right_iris,
                                                        landmarks, frame.shape)
-        raw_gaze   = gaze_left if gaze_left == gaze_right else "CENTER"
+        # DOWN takes priority if either eye detects it (pitch-based)
+        if gaze_left == "DOWN" or gaze_right == "DOWN":
+            raw_gaze = "DOWN"
+        else:
+            raw_gaze = gaze_left if gaze_left == gaze_right else "CENTER"
         gaze, off_time = gaze_detector.update_off_screen(raw_gaze, face_detected=True)
 
         buffer.update_blinks(blink_count)
@@ -204,7 +208,9 @@ while True:
         cv2.putText(frame, f"EAR: {ear:.2f}",                                          (30, 30),  cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         cv2.putText(frame, f"Blinks: {blink_count}  Rate: {blink_rate:.1f}/min",       (30, 58),  cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         cv2.putText(frame, f"Eye: {'Closed' if eye_closed else 'Open'}  Dur: {closure_dur:.1f}s", (30, 86), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-        cv2.putText(frame, f"Gaze: {gaze}  Off: {off_time:.1f}s",                      (30, 114), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+        # gaze display — DOWN shown in orange to distinguish from LEFT/RIGHT
+        gaze_color = (0, 165, 255) if gaze == "DOWN" else (255, 255, 0)
+        cv2.putText(frame, f"Gaze: {gaze}  Off: {off_time:.1f}s",                      (30, 114), cv2.FONT_HERSHEY_SIMPLEX, 0.6, gaze_color, 2)
         cv2.putText(frame, f"Instability: {instability}  Session: {session_min:.1f}m", (30, 142), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
         cv2.putText(frame, f"Mode: {context.mode}{learning_tag}",                      (30, 170), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
         cv2.putText(frame, f"Baseline Blink: {int(blink_threshold)}",                  (30, 198), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)

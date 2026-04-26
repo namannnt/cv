@@ -4,10 +4,10 @@ import numpy as np
 import cv2
 
 
-# ── Task 1.1: HeadPoseEstimator ──────────────────────────────────────────────
+# ── HeadPoseEstimator ─────────────────────────────────────────────────────────
 class HeadPoseEstimator:
     """
-    Lightweight head yaw estimation using 6 facial landmarks + cv2.solvePnP.
+    Lightweight head pose estimation using 6 facial landmarks + cv2.solvePnP.
     Landmark indices used:
       1   = nose tip
       152 = chin
@@ -16,11 +16,10 @@ class HeadPoseEstimator:
       61  = left mouth corner
       291 = right mouth corner
 
-    Returns yaw in degrees. Returns 0.0 on any failure so callers
-    can use the raw iris ratio unchanged.
+    Returns (yaw, pitch) in degrees.
+    Returns (0.0, 0.0) on any failure so callers use raw_ratio unchanged.
     """
 
-    # Approximate 3D model points (generic face, units = mm)
     MODEL_POINTS = np.array([
         [0.0,    0.0,    0.0],    # nose tip
         [0.0,   -63.6, -12.5],   # chin
@@ -30,18 +29,17 @@ class HeadPoseEstimator:
         [28.9,  -28.9, -24.1],   # right mouth corner
     ], dtype=np.float64)
 
-    # Landmark indices matching MODEL_POINTS order
     LANDMARK_INDICES = [1, 152, 33, 263, 61, 291]
 
-    def estimate_yaw(self, landmarks: list, frame_shape: tuple) -> float:
+    def estimate_head_pose(self, landmarks: list, frame_shape: tuple) -> tuple:
         """
         landmarks: flat list of (x, y) pixel tuples (478 points from FaceMesh)
         frame_shape: (height, width, channels)
-        Returns yaw angle in degrees, or 0.0 on failure.
+        Returns (yaw, pitch) in degrees, or (0.0, 0.0) on failure.
         """
         try:
             h, w = frame_shape[:2]
-            focal = w  # approximate focal length
+            focal = w
             cam_matrix = np.array([
                 [focal, 0,     w / 2],
                 [0,     focal, h / 2],
@@ -60,42 +58,41 @@ class HeadPoseEstimator:
                 flags=cv2.SOLVEPNP_ITERATIVE
             )
             if not success:
-                return 0.0
+                return 0.0, 0.0
 
             rmat, _ = cv2.Rodrigues(rvec)
-            # Extract yaw from rotation matrix
-            yaw = math.degrees(math.atan2(rmat[1][0], rmat[0][0]))
-            return yaw
+            yaw   = math.degrees(math.atan2(rmat[1][0], rmat[0][0]))
+            pitch = math.degrees(math.atan2(-rmat[2][0],
+                                            math.sqrt(rmat[2][1]**2 + rmat[2][2]**2)))
+            return yaw, pitch
 
         except Exception:
-            return 0.0
+            return 0.0, 0.0
 
 
-# ── Task 2.1: GazeCalibrator ─────────────────────────────────────────────────
+# ── GazeCalibrator ────────────────────────────────────────────────────────────
 class GazeCalibrator:
     """
     Per-user gaze calibration.
-    Collects adjusted_ratio values during the first ~7 seconds of a session
-    while the user looks straight at the screen.
+    Collects adjusted_ratio values during the first ~7 seconds of a session.
     Once ≥ MIN_SAMPLES collected, derives personalized thresholds:
       left_thresh  = center_mean - 0.1
       right_thresh = center_mean + 0.1
     Falls back to defaults (0.42, 0.58) until calibration is complete.
     """
     CALIBRATION_SECONDS = 7
-    MIN_SAMPLES = 30
+    MIN_SAMPLES  = 30
     DEFAULT_LEFT  = 0.42
     DEFAULT_RIGHT = 0.58
 
     def __init__(self):
-        self.center_buffer: list[float] = []
-        self.calibrated = False
+        self.center_buffer: list = []
+        self.calibrated   = False
         self.left_thresh  = self.DEFAULT_LEFT
         self.right_thresh = self.DEFAULT_RIGHT
-        self._start = time.time()
+        self._start       = time.time()
 
     def update(self, adjusted_ratio: float) -> None:
-        """Call every frame during the calibration window."""
         if self.calibrated:
             return
         elapsed = time.time() - self._start
@@ -105,36 +102,43 @@ class GazeCalibrator:
             center_mean = sum(self.center_buffer) / len(self.center_buffer)
             self.left_thresh  = center_mean - 0.1
             self.right_thresh = center_mean + 0.1
-            # safety: ensure left < right
             if self.left_thresh >= self.right_thresh:
                 self.left_thresh  = self.DEFAULT_LEFT
                 self.right_thresh = self.DEFAULT_RIGHT
             self.calibrated = True
 
-    def get_thresholds(self) -> tuple[float, float]:
-        """Returns (left_thresh, right_thresh). Uses defaults until calibrated."""
+    def get_thresholds(self) -> tuple:
         return self.left_thresh, self.right_thresh
 
 
-# ── GazeDetector (extended with HeadPoseEstimator + GazeCalibrator) ──────────
+# ── GazeDetector ─────────────────────────────────────────────────────────────
 class GazeDetector:
+    """
+    Returns gaze direction: LEFT, CENTER, RIGHT, or DOWN.
+    DOWN indicates head pitched forward >20 degrees (looking at phone/desk).
+
+    Pipeline:
+      1. Compute raw iris ratio within eye bounding box.
+      2. Apply head-yaw compensation via HeadPoseEstimator.
+      3. Classify LEFT/CENTER/RIGHT using calibrated thresholds.
+      4. Override with DOWN if head pitch > 20 degrees.
+    """
+
     def __init__(self):
         self.off_screen_start = None
         self.off_screen_time  = 0
         self.last_gaze        = "CENTER"
         self.gaze_history     = []
         self.history_size     = 5
+        self.head_pose        = HeadPoseEstimator()
+        self.calibrator       = GazeCalibrator()
 
-        # Task 1.1 + 2.1: new sub-components
-        self.head_pose  = HeadPoseEstimator()
-        self.calibrator = GazeCalibrator()
-
-    # Task 1.3: extended to apply head-pose compensation + calibrated thresholds
     def get_gaze_direction(self, eye_points, iris_point,
                            landmarks=None, frame_shape=None):
         """
         landmarks and frame_shape are optional.
-        If provided, head-pose yaw compensation is applied.
+        If provided, head-pose yaw + pitch are computed.
+        Returns: "LEFT", "CENTER", "RIGHT", or "DOWN"
         """
         left  = eye_points[0][0]
         right = eye_points[3][0]
@@ -146,22 +150,30 @@ class GazeDetector:
         iris_x    = iris_point[0]
         raw_ratio = (iris_x - left) / eye_width
 
-        # Task 1.3: head-pose compensation
-        yaw = 0.0
+        # CHANGE 1+2: head-pose compensation — unpack both yaw and pitch
+        yaw, pitch = 0.0, 0.0
         if landmarks is not None and frame_shape is not None:
-            yaw = self.head_pose.estimate_yaw(landmarks, frame_shape)
+            yaw, pitch = self.head_pose.estimate_head_pose(landmarks, frame_shape)
+
         adjusted_ratio = raw_ratio - (yaw * 0.01)
 
-        # Task 2.3: update calibrator + fetch thresholds
+        # update calibrator + fetch thresholds
         self.calibrator.update(adjusted_ratio)
         left_thresh, right_thresh = self.calibrator.get_thresholds()
 
+        # CHANGE 2: left/right classification (unchanged logic)
         if adjusted_ratio < left_thresh:
-            return "LEFT"
+            gaze = "LEFT"
         elif adjusted_ratio > right_thresh:
-            return "RIGHT"
+            gaze = "RIGHT"
         else:
-            return "CENTER"
+            gaze = "CENTER"
+
+        # CHANGE 2: pitch-based DOWN detection — takes priority
+        if pitch > 20:
+            return "DOWN"
+
+        return gaze
 
     def smooth_gaze(self, gaze):
         self.gaze_history.append(gaze)
@@ -170,12 +182,17 @@ class GazeDetector:
         return max(set(self.gaze_history), key=self.gaze_history.count)
 
     def update_off_screen(self, gaze, face_detected):
+        """
+        CHANGE 3: "DOWN" is treated the same as LEFT/RIGHT —
+        it is != "CENTER" so the existing timer logic handles it automatically.
+        """
         if not face_detected:
             gaze = self.last_gaze
 
         smoothed       = self.smooth_gaze(gaze)
         self.last_gaze = smoothed
 
+        # "DOWN" != "CENTER" → off-screen timer starts automatically
         if smoothed != "CENTER":
             if self.off_screen_start is None:
                 self.off_screen_start = time.time()
