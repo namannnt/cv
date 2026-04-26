@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AttentionAI Classroom — Sign In</title>
+    <!-- Redirect check BEFORE any render — eliminates flash for logged-in users -->
+    <script>
+        (function() {
+            var jwt  = localStorage.getItem('jwt');
+            var role = localStorage.getItem('role');
+            if (jwt) {
+                window.location.replace(role === 'teacher' ? '/teacher' : '/student');
+                document.documentElement.style.display = 'none';
+            }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* ── AUTH PAGE OVERRIDES ── */
+        body {
+            overflow: hidden;
+            animation: fadeIn .25s ease forwards;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .auth-scene {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        /* LEFT PANEL — branding */
+        .auth-left {
+            background: linear-gradient(145deg, #02020a 0%, #07071a 60%, #0a0a2a 100%);
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 60px 64px;
+            position: relative; overflow: hidden;
+        }
+        .auth-left::before {
+            content: '';
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 20% 30%, #00e5ff0d 0%, transparent 70%),
+                radial-gradient(ellipse 50% 60% at 80% 70%, #a259ff0a 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .auth-left-grid {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .brand-logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem; font-weight: 700;
+            color: var(--cyan); letter-spacing: 1px;
+            margin-bottom: 56px; position: relative;
+        }
+        .brand-logo span { color: var(--purple); opacity: .7; }
+        .brand-headline {
+            font-size: 2.6rem; font-weight: 800; line-height: 1.15;
+            color: #fff; margin-bottom: 20px; position: relative;
+        }
+        .brand-headline em {
+            font-style: normal;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .brand-sub {
+            font-size: .95rem; color: #444; line-height: 1.7;
+            max-width: 380px; position: relative;
+        }
+        .brand-pills {
+            display: flex; flex-wrap: wrap; gap: 10px;
+            margin-top: 40px; position: relative;
+        }
+        .brand-pill {
+            padding: 7px 16px;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 100px;
+            font-size: .78rem; color: #555;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .brand-pill.lit { color: var(--cyan); border-color: #00e5ff22; background: #00e5ff08; }
+
+        /* RIGHT PANEL — form */
+        .auth-right {
+            background: #04040e;
+            display: flex; align-items: center; justify-content: center;
+            padding: 40px 48px;
+            position: relative;
+        }
+        .auth-right::before {
+            content: '';
+            position: absolute; top: 0; left: 0; bottom: 0; width: 1px;
+            background: linear-gradient(180deg, transparent, var(--cyan), var(--purple), transparent);
+            opacity: .15;
+        }
+
+        .auth-panel { width: 100%; max-width: 400px; }
+
+        /* Tabs */
+        .auth-mode-tabs {
+            display: flex; gap: 0;
+            background: #07070f;
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 4px;
+            margin-bottom: 32px;
+        }
+        .auth-mode-tab {
+            flex: 1; padding: 9px 0;
+            background: transparent; border: none;
+            color: #444; font-size: .85rem; font-weight: 600;
+            cursor: pointer; border-radius: 9px;
+            transition: all .25s; font-family: 'Inter', sans-serif;
+        }
+        .auth-mode-tab.active {
+            background: linear-gradient(135deg, #00e5ff18, #a259ff18);
+            color: #fff;
+            box-shadow: 0 0 0 1px #00e5ff22;
+        }
+
+        /* Form header */
+        .auth-form-header { margin-bottom: 28px; }
+        .auth-form-header h2 {
+            font-size: 1.5rem; font-weight: 800; color: #fff;
+            margin-bottom: 6px;
+        }
+        .auth-form-header p { font-size: .83rem; color: #444; }
+
+        /* Role toggle */
+        .role-toggle {
+            display: flex; gap: 8px; margin-bottom: 22px;
+        }
+        .role-opt {
+            flex: 1; padding: 10px 12px;
+            background: #07070f; border: 1px solid var(--border);
+            border-radius: 10px; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            transition: all .2s; font-family: 'Inter', sans-serif;
+        }
+        .role-opt:hover { border-color: #1a1a3a; }
+        .role-opt.active { border-color: var(--cyan); background: #00e5ff0a; }
+        .role-opt-icon { font-size: 1.1rem; }
+        .role-opt-text { display: flex; flex-direction: column; }
+        .role-opt-label { font-size: .82rem; font-weight: 600; color: #ccc; }
+        .role-opt-desc  { font-size: .7rem; color: #444; margin-top: 1px; }
+        .role-opt.active .role-opt-label { color: var(--cyan); }
+
+        /* Input fields */
+        .field { margin-bottom: 16px; }
+        .field label {
+            display: block; font-size: .72rem; font-weight: 600;
+            color: #444; letter-spacing: .6px; text-transform: uppercase;
+            font-family: 'JetBrains Mono', monospace; margin-bottom: 7px;
+        }
+        .field-wrap { position: relative; }
+        .field input {
+            width: 100%; padding: 11px 14px;
+            background: #07070f; color: #e0e0e0;
+            border: 1px solid var(--border); border-radius: 10px;
+            font-size: .9rem; font-family: 'Inter', sans-serif;
+            outline: none; transition: border-color .2s, box-shadow .2s;
+        }
+        .field input:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px #00e5ff12;
+        }
+        .field input.error-field { border-color: var(--red); box-shadow: 0 0 0 3px #ff174412; }
+        .field input::placeholder { color: #2a2a3a; }
+        .field-icon {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            color: #333; font-size: .9rem; cursor: pointer;
+            background: none; border: none; padding: 4px;
+            transition: color .2s;
+        }
+        .field-icon:hover { color: #888; }
+        .field-hint { font-size: .72rem; color: #333; margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
+
+        /* Submit button */
+        .btn-auth {
+            width: 100%; padding: 13px;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #000; font-weight: 700; font-size: .92rem;
+            border: none; border-radius: 10px; cursor: pointer;
+            transition: transform .2s, box-shadow .2s, opacity .2s;
+            font-family: 'Inter', sans-serif;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin-top: 6px; position: relative; overflow: hidden;
+        }
+        .btn-auth::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, #fff2, transparent);
+            opacity: 0; transition: opacity .2s;
+        }
+        .btn-auth:hover { transform: translateY(-2px); box-shadow: 0 8px 30px #00e5ff33; }
+        .btn-auth:hover::after { opacity: 1; }
+        .btn-auth:active { transform: translateY(0); }
+        .btn-auth:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-auth .spinner {
+            width: 16px; height: 16px;
+            border: 2px solid #00000040;
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            display: none;
+        }
+        .btn-auth.loading .spinner { display: block; }
+        .btn-auth.loading .btn-label { opacity: 0; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Messages */
+        .msg { font-size: .8rem; margin-top: 12px; min-height: 1.1rem; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; gap: 6px; }
+        .msg.error { color: var(--red); }
+        .msg.success { color: var(--green); }
+        .msg:empty { display: none; }
+
+        /* Divider */
+        .auth-divider {
+            display: flex; align-items: center; gap: 12px;
+            margin: 20px 0; color: #222; font-size: .75rem;
+        }
+        .auth-divider::before, .auth-divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border);
+        }
+
+        /* Switch link */
+        .auth-switch { text-align: center; margin-top: 20px; font-size: .82rem; color: #333; }
+        .auth-switch a { color: var(--cyan); text-decoration: none; font-weight: 600; cursor: pointer; }
+        .auth-switch a:hover { text-decoration: underline; }
+
+        /* Password strength */
+        .pw-strength { margin-top: 6px; display: flex; gap: 4px; }
+        .pw-bar { flex: 1; height: 3px; border-radius: 2px; background: #111; transition: background .3s; }
+        .pw-bar.weak   { background: var(--red); }
+        .pw-bar.medium { background: var(--yellow); }
+        .pw-bar.strong { background: var(--green); }
+
+        /* Success state */
+        .auth-success-overlay {
+            position: absolute; inset: 0;
+            background: #04040e;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 16px; opacity: 0; pointer-events: none;
+            transition: opacity .4s;
+        }
+        .auth-success-overlay.show { opacity: 1; pointer-events: all; }
+        .success-icon { font-size: 3rem; animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
+        @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+        .success-text { font-size: 1rem; font-weight: 700; color: var(--green); }
+        .success-sub  { font-size: .82rem; color: #444; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .auth-scene { grid-template-columns: 1fr; }
+            .auth-left { display: none; }
+            .auth-right { padding: 32px 24px; }
+            body { overflow: auto; }
+        }
+    </style>
+</head>
+<body>
+<div class="auth-scene">
+
+    <!-- LEFT: Branding -->
+    <div class="auth-left">
+        <div class="auth-left-grid"></div>
+        <div class="brand-logo"><span>[</span>🧠 AttentionAI Classroom<span>]</span></div>
+        <h1 class="brand-headline">
+            Real-time<br>
+            <em>attention</em><br>
+            for every classroom.
+        </h1>
+        <p class="brand-sub">
+            Monitor student focus live, track trends over time, and intervene before anyone falls behind — all from a single dashboard.
+        </p>
+        <div class="brand-pills">
+            <div class="brand-pill lit">📊 Live Dashboard</div>
+            <div class="brand-pill lit">🧠 AI Scoring</div>
+            <div class="brand-pill">468 Landmarks</div>
+            <div class="brand-pill">SQLite · FastAPI</div>
+            <div class="brand-pill">No WebSockets</div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Auth form -->
+    <div class="auth-right">
+        <div class="auth-panel" style="position:relative">
+
+            <!-- Success overlay -->
+            <div class="auth-success-overlay" id="successOverlay">
+                <div class="success-icon">✅</div>
+                <div class="success-text" id="successText">Signed in!</div>
+                <div class="success-sub" id="successSub">Redirecting you now…</div>
+            </div>
+
+            <!-- Mode tabs -->
+            <div class="auth-mode-tabs">
+                <button class="auth-mode-tab active" id="tabSignin" onclick="switchMode('signin')">Sign In</button>
+                <button class="auth-mode-tab" id="tabRegister" onclick="switchMode('register')">Create Account</button>
+            </div>
+
+            <!-- SIGN IN FORM -->
+            <div id="formSignin">
+                <div class="auth-form-header">
+                    <h2>Welcome back 👋</h2>
+                    <p>Sign in to your teacher or student account.</p>
+                </div>
+                <div class="field">
+                    <label>Email address</label>
+                    <div class="field-wrap">
+                        <input type="email" id="siEmail" placeholder="you@school.com" autocomplete="email" onkeydown="if(event.key==='Enter')doSignin()">
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <div class="field-wrap">
+                        <input type="password" id="siPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignin()" style="padding-right:42px">
+                        <button class="field-icon" onclick="togglePw('siPassword',this)" tabindex="-1">👁</button>
+                    </div>
+                </div>
+                <button class="btn-auth" id="btnSignin" onclick="doSignin()">
+                    <span class="spinner"></span>
+                    <span class="btn-label">Sign In →</span>
+                </button>
+                <div class="msg error" id="siError"></div>
+                <div class="auth-switch">Don't have an account? <a onclick="switchMode('register')">Create one</a></div>
+            </div>
+
+            <!-- REGISTER FORM -->
+            <div id="formRegister" style="display:none">
+                <div class="auth-form-header">
+                    <h2>Create account</h2>
+                    <p>Join AttentionAI Classroom today.</p>
+                </div>
+
+                <div class="role-toggle">
+                    <div class="role-opt active" id="roleTeacher" onclick="selectRole('teacher')">
+                        <span class="role-opt-icon">🎓</span>
+                        <div class="role-opt-text">
+                            <span class="role-opt-label">Teacher</span>
+                            <span class="role-opt-desc">Manage classes & monitor</span>
+                        </div>
+                    </div>
+                    <div class="role-opt" id="roleStudent" onclick="selectRole('student')">
+                        <span class="role-opt-icon">👤</span>
+                        <div class="role-opt-text">
+                            <span class="role-opt-label">Student</span>
+                            <span class="role-opt-desc">Join classes & track focus</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Full name</label>
+                    <input type="text" id="regName" placeholder="Your full name" autocomplete="name">
+                </div>
+                <div class="field">
+                    <label>Email address</label>
+                    <input type="email" id="regEmail" placeholder="you@school.com" autocomplete="email">
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <div class="field-wrap">
+                        <input type="password" id="regPassword" placeholder="Min 6 characters" autocomplete="new-password"
+                               style="padding-right:42px" oninput="checkPwStrength(this.value)" onkeydown="if(event.key==='Enter')doRegister()">
+                        <button class="field-icon" onclick="togglePw('regPassword',this)" tabindex="-1">👁</button>
+                    </div>
+                    <div class="pw-strength" id="pwStrength">
+                        <div class="pw-bar" id="pw1"></div>
+                        <div class="pw-bar" id="pw2"></div>
+                        <div class="pw-bar" id="pw3"></div>
+                        <div class="pw-bar" id="pw4"></div>
+                    </div>
+                    <div class="field-hint" id="pwHint"></div>
+                </div>
+                <div class="field" id="subjectField">
+                    <label>Subject</label>
+                    <input type="text" id="regSubject" placeholder="e.g. Physics, Mathematics">
+                </div>
+
+                <button class="btn-auth" id="btnRegister" onclick="doRegister()">
+                    <span class="spinner"></span>
+                    <span class="btn-label">Create Account →</span>
+                </button>
+                <div class="msg error"   id="regError"></div>
+                <div class="msg success" id="regSuccess"></div>
+                <div class="auth-switch">Already have an account? <a onclick="switchMode('signin')">Sign in</a></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/config.js"></script>
+<script>
+let _role = 'teacher';
+
+function switchMode(mode) {
+    const isSignin = mode === 'signin';
+    document.getElementById('formSignin').style.display   = isSignin ? 'block' : 'none';
+    document.getElementById('formRegister').style.display = isSignin ? 'none'  : 'block';
+    document.getElementById('tabSignin').classList.toggle('active', isSignin);
+    document.getElementById('tabRegister').classList.toggle('active', !isSignin);
+    clearMessages();
+}
+
+function clearMessages() {
+    ['siError','regError','regSuccess'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '';
+    });
+}
+
+function selectRole(role) {
+    _role = role;
+    document.getElementById('roleTeacher').classList.toggle('active', role === 'teacher');
+    document.getElementById('roleStudent').classList.toggle('active', role === 'student');
+    document.getElementById('subjectField').style.display = role === 'teacher' ? 'block' : 'none';
+}
+
+function togglePw(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁';
+}
+
+function checkPwStrength(pw) {
+    const bars = [document.getElementById('pw1'), document.getElementById('pw2'),
+                  document.getElementById('pw3'), document.getElementById('pw4')];
+    const hint = document.getElementById('pwHint');
+    bars.forEach(b => { b.className = 'pw-bar'; });
+    if (!pw) { hint.textContent = ''; return; }
+    let score = 0;
+    if (pw.length >= 6)  score++;
+    if (pw.length >= 10) score++;
+    if (/[A-Z]/.test(pw) && /[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    const cls   = score <= 1 ? 'weak' : score <= 2 ? 'medium' : 'strong';
+    const label = score <= 1 ? 'Weak' : score <= 2 ? 'Fair' : score === 3 ? 'Good' : 'Strong';
+    for (let i = 0; i < score; i++) bars[i].classList.add(cls);
+    hint.textContent = label;
+    hint.style.color = cls === 'weak' ? 'var(--red)' : cls === 'medium' ? 'var(--yellow)' : 'var(--green)';
+}
+
+function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.classList.toggle('loading', loading);
+}
+
+function showSuccess(text, sub) {
+    document.getElementById('successText').textContent = text;
+    document.getElementById('successSub').textContent  = sub;
+    document.getElementById('successOverlay').classList.add('show');
+}
+
+async function doSignin() {
+    const email    = document.getElementById('siEmail').value.trim();
+    const password = document.getElementById('siPassword').value;
+    const errEl    = document.getElementById('siError');
+    errEl.textContent = '';
+
+    if (!email || !password) { errEl.textContent = '⚠ Please fill in all fields.'; return; }
+
+    setLoading('btnSignin', true);
+    try {
+        const res  = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({email, password})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            errEl.textContent = '✕ ' + (data.detail || 'Invalid credentials.');
+            setLoading('btnSignin', false);
+            document.getElementById('siPassword').classList.add('error-field');
+            setTimeout(() => document.getElementById('siPassword').classList.remove('error-field'), 2000);
+            return;
+        }
+        localStorage.setItem('jwt',       data.access_token);
+        localStorage.setItem('role',      data.role);
+        localStorage.setItem('user_id',   data.user_id);
+        localStorage.setItem('user_name', data.name);
+        showSuccess(`Welcome back, ${data.name}!`, 'Taking you to your dashboard…');
+        setTimeout(() => { window.location.href = data.role === 'teacher' ? '/teacher' : '/student'; }, 1200);
+    } catch(e) {
+        errEl.textContent = '✕ Cannot connect to server. Is the backend running?';
+        setLoading('btnSignin', false);
+    }
+}
+
+async function doRegister() {
+    const name     = document.getElementById('regName').value.trim();
+    const email    = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const subject  = document.getElementById('regSubject').value.trim();
+    const errEl    = document.getElementById('regError');
+    const okEl     = document.getElementById('regSuccess');
+    errEl.textContent = ''; okEl.textContent = '';
+
+    if (!name || !email || !password) { errEl.textContent = '⚠ Please fill in all fields.'; return; }
+    if (password.length < 6)          { errEl.textContent = '⚠ Password must be at least 6 characters.'; return; }
+    if (_role === 'teacher' && !subject) { errEl.textContent = '⚠ Subject is required for teachers.'; return; }
+
+    setLoading('btnRegister', true);
+    try {
+        const res  = await fetch(`${API_BASE}/auth/register`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({name, email, password, role: _role, subject: subject || null})
+        });
+        const data = await res.json();
+        if (res.status === 409) { errEl.textContent = '✕ This email is already registered.'; setLoading('btnRegister', false); return; }
+        if (!res.ok)            { errEl.textContent = '✕ ' + (data.detail || 'Registration failed.'); setLoading('btnRegister', false); return; }
+
+        showSuccess('Account created!', 'Signing you in…');
+        // auto sign-in after register
+        const loginRes  = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({email, password})
+        });
+        const loginData = await loginRes.json();
+        if (loginRes.ok) {
+            localStorage.setItem('jwt',       loginData.access_token);
+            localStorage.setItem('role',      loginData.role);
+            localStorage.setItem('user_id',   loginData.user_id);
+            localStorage.setItem('user_name', loginData.name);
+            setTimeout(() => { window.location.href = loginData.role === 'teacher' ? '/teacher' : '/student'; }, 1200);
+        } else {
+            setTimeout(() => { switchMode('signin'); setLoading('btnRegister', false); }, 1400);
+        }
+    } catch(e) {
+        errEl.textContent = '✕ Cannot connect to server. Is the backend running?';
+        setLoading('btnRegister', false);
+    }
+}
+
+// redirect handled at top of <head> — nothing needed here
+
+</script>
+</body>
+</html>

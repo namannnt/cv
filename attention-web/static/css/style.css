@@ -304,3 +304,214 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:#e0e0e0;min-heigh
     font-family: 'JetBrains Mono', monospace;
     min-height: 1.2rem;
 }
+
+/* ── CAMERA PREVIEW ── */
+.camera-preview-wrap {
+    margin-top: 28px;
+    animation: fadeUp .6s .4s ease both;
+    opacity: 0;
+}
+.camera-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.cam-dot {
+    width: 8px; height: 8px;
+    background: var(--red);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--red);
+    animation: blink .8s ease-in-out infinite;
+}
+.cam-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .68rem;
+    color: var(--cyan);
+    letter-spacing: 1px;
+}
+.cam-privacy {
+    margin-left: auto;
+    font-size: .65rem;
+    color: #333;
+    font-family: 'JetBrains Mono', monospace;
+}
+.camera-box {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+    aspect-ratio: 4/3;
+    background: #07070f;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 0 30px #00e5ff0a;
+}
+.camera-box video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+    transform: scaleX(-1); /* mirror */
+    display: none;
+}
+.camera-box video.active { display: block; }
+.camera-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #07070f;
+    border-radius: 14px;
+    transition: opacity .3s;
+}
+.camera-overlay.hidden { opacity: 0; pointer-events: none; }
+.cam-start-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    color: #000;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: .9rem;
+    transition: transform .2s, box-shadow .2s;
+}
+.cam-start-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px #00e5ff44; }
+.camera-scan-line {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    animation: scanDown 3s linear infinite;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .3s;
+}
+.camera-box.live .camera-scan-line { opacity: 1; }
+.cam-note {
+    font-size: .68rem;
+    color: #2a2a4a;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* stack orb + camera vertically in hero-visual */
+.hero-visual {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+.orb-container { margin-bottom: -20px; }
+
+/* ── CAMERA SECTION (standalone, below hero) ── */
+.camera-section {
+    max-width: 1200px;
+    margin: 0 auto 60px;
+    padding: 0 48px;
+    position: relative;
+    z-index: 1;
+}
+.camera-section-inner {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+}
+.camera-section-inner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), var(--purple), transparent);
+    opacity: .4;
+}
+.camera-section .camera-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.camera-section .camera-box {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 16/9;
+    background: #030308;
+    border: 1px solid #0f0f2a;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+}
+.camera-section video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    display: none;
+    border-radius: 14px;
+}
+.camera-section video.active { display: block; }
+.cam-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    height: 100%;
+    padding: 40px;
+}
+.cam-icon { font-size: 3rem; opacity: .4; }
+.cam-placeholder p { font-size: .9rem; color: #444; }
+
+/* ── CAMERA OVERLAY FIX ── */
+.camera-section .camera-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(3, 3, 8, 0.85);
+    border-radius: 14px;
+    z-index: 10;
+    transition: opacity .3s;
+}
+.camera-section .camera-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+.camera-section .cam-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+}
+.camera-section .cam-icon {
+    font-size: 3.5rem;
+    filter: drop-shadow(0 0 20px var(--cyan));
+}
+.camera-section .cam-placeholder p {
+    color: #888;
+    font-size: .95rem;
+}
+.camera-section .cam-start-btn {
+    padding: 14px 36px;
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    color: #000;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    transition: transform .2s, box-shadow .2s;
+    box-shadow: 0 0 30px #00e5ff44;
+}
+.camera-section .cam-start-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 50px #00e5ff66;
+}

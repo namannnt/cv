@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student — AttentionAI Classroom</title>
+    <script>
+        (function() {
+            var jwt  = localStorage.getItem('jwt');
+            var role = localStorage.getItem('role');
+            if (!jwt) { window.location.replace('/'); document.documentElement.style.display='none'; }
+            else if (role === 'teacher') { window.location.replace('/teacher'); document.documentElement.style.display='none'; }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .join-section {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 28px 32px; margin-bottom: 32px;
+            position: relative; overflow: hidden;
+        }
+        .join-section::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent); opacity: .3;
+        }
+        .join-section h3 { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+        .join-section p  { font-size: .82rem; color: #444; margin-bottom: 20px; }
+        .join-form { display: flex; gap: 10px; }
+        .join-form input {
+            flex: 1; padding: 11px 16px; background: #0a0a18; color: #e0e0e0;
+            border: 1px solid var(--border); border-radius: 10px;
+            font-size: .95rem; font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 2px; text-transform: uppercase; outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .join-form input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px #00e5ff12; }
+        .join-form input::placeholder { letter-spacing: 1px; text-transform: none; color: #2a2a3a; }
+        .btn-join {
+            padding: 11px 24px;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #000; font-weight: 700; font-size: .88rem;
+            border: none; border-radius: 10px; cursor: pointer;
+            white-space: nowrap; font-family: 'Inter', sans-serif;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .btn-join:hover { transform: translateY(-2px); box-shadow: 0 6px 24px #00e5ff33; }
+        .btn-join:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+        .join-msg { font-size: .8rem; margin-top: 10px; font-family: 'JetBrains Mono', monospace; min-height: 1rem; }
+        .join-msg.error   { color: var(--red); }
+        .join-msg.success { color: var(--green); }
+
+        .section-label { font-size: .85rem; color: #444; font-weight: 600; margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; letter-spacing: .5px; text-transform: uppercase; }
+
+        /* Enrolled class cards */
+        .enrolled-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .enrolled-card {
+            background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+            padding: 22px; position: relative; overflow: hidden;
+            transition: border-color .2s, transform .2s;
+        }
+        .enrolled-card:hover { transform: translateY(-2px); }
+        .enrolled-card.live { border-color: #00ff8833; }
+        .enrolled-card.live::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--green), transparent);
+        }
+        .ec-subject { font-size: .68rem; color: var(--cyan); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+        .ec-name    { font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 3px; }
+        .ec-teacher { font-size: .78rem; color: #444; margin-bottom: 14px; }
+        .ec-footer  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .ec-code    { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: #333; }
+        .ec-live    { display: flex; align-items: center; gap: 5px; font-size: .72rem; color: var(--green); font-family: 'JetBrains Mono', monospace; }
+        .ec-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 1.2s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+        .ec-idle    { font-size: .72rem; color: #333; font-family: 'JetBrains Mono', monospace; }
+
+        /* Monitor button */
+        .btn-monitor {
+            width: 100%; padding: 10px;
+            background: linear-gradient(135deg, var(--green), #00b36b);
+            color: #000; font-weight: 700; font-size: .85rem;
+            border: none; border-radius: 10px; cursor: pointer;
+            font-family: 'Inter', sans-serif; transition: transform .2s, box-shadow .2s;
+        }
+        .btn-monitor:hover { transform: translateY(-1px); box-shadow: 0 4px 20px #00ff8844; }
+        .btn-monitor.active {
+            background: linear-gradient(135deg, var(--red), #cc0000);
+            color: #fff;
+        }
+
+        /* Monitoring panel (modal) */
+        .monitor-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.85);
+            backdrop-filter: blur(12px); z-index: 300;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .monitor-panel {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 28px; width: 100%; max-width: 720px;
+            position: relative;
+        }
+        .monitor-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--green), transparent);
+        }
+        .monitor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .monitor-title  { font-size: 1rem; font-weight: 700; color: #fff; }
+        .monitor-class  { font-size: .78rem; color: var(--cyan); font-family: 'JetBrains Mono', monospace; }
+        .btn-stop-monitor {
+            padding: 8px 20px; background: var(--red); color: #fff;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-weight: 700; font-size: .82rem; font-family: 'Inter', sans-serif;
+        }
+
+        /* Camera + stats layout */
+        .monitor-body { display: grid; grid-template-columns: 1fr 200px; gap: 20px; }
+        .cam-wrap { position: relative; border-radius: 12px; overflow: hidden; background: #000; aspect-ratio: 4/3; }
+        .cam-wrap video  { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+        .cam-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .cam-status {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(0,0,0,.7); border-radius: 100px;
+            padding: 4px 10px; font-size: .7rem; font-family: 'JetBrains Mono', monospace;
+            color: var(--green); display: flex; align-items: center; gap: 5px;
+        }
+        .cam-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 1s infinite; }
+
+        /* Live stats sidebar */
+        .live-stats { display: flex; flex-direction: column; gap: 12px; }
+        .stat-card {
+            background: #0a0a18; border: 1px solid var(--border); border-radius: 12px;
+            padding: 14px; text-align: center;
+        }
+        .stat-val   { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 700; }
+        .stat-label { font-size: .65rem; color: #444; text-transform: uppercase; letter-spacing: .5px; margin-top: 3px; }
+
+        /* Loading state */
+        .monitor-loading {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 12px; padding: 40px; color: #444;
+            font-family: 'JetBrains Mono', monospace; font-size: .85rem;
+        }
+        .spinner-ring {
+            width: 36px; height: 36px;
+            border: 3px solid #111; border-top-color: var(--cyan);
+            border-radius: 50%; animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* History */
+        .history-section { margin-top: 32px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><span class="logo-bracket">[</span>🧠 AttentionAI<span class="logo-bracket">]</span></div>
+        <div class="nav-right">
+            <span class="nav-user" id="navUser"></span>
+            <button class="nav-btn danger" onclick="doLogout()">Leave</button>
+        </div>
+    </nav>
+
+    <div style="padding:32px 40px;max-width:1100px;margin:0 auto">
+
+        <!-- JOIN A CLASS -->
+        <div class="join-section">
+            <h3>🔑 Join a Class</h3>
+            <p>Enter the 6-character class code your teacher shared with you.</p>
+            <div class="join-form">
+                <input type="text" id="classCodeInput" placeholder="e.g. XK7F2A"
+                       maxlength="6" autocomplete="off"
+                       oninput="this.value=this.value.toUpperCase()"
+                       onkeydown="if(event.key==='Enter')joinClass()">
+                <button class="btn-join" id="btnJoin" onclick="joinClass()">Join Class →</button>
+            </div>
+            <div class="join-msg" id="joinMsg"></div>
+        </div>
+
+        <!-- MY CLASSES -->
+        <div class="section-label">📚 My Classes</div>
+        <div class="enrolled-grid" id="enrolledGrid">
+            <div style="color:#333;font-family:'JetBrains Mono',monospace;font-size:.8rem;padding:8px">Loading classes…</div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="history-section">
+            <div class="section-label">📈 Attention History <span style="color:#222;font-weight:400;text-transform:none;letter-spacing:0">(last 30 days)</span></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Date</th><th>Class</th><th>Duration</th><th>Avg Score</th></tr></thead>
+                    <tbody id="historyBody">
+                        <tr class="empty-row"><td colspan="4">Loading your history…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MONITORING MODAL -->
+    <div class="monitor-overlay" id="monitorOverlay" style="display:none">
+        <div class="monitor-panel">
+            <div class="monitor-header">
+                <div>
+                    <div class="monitor-title">🧠 Live Attention Monitoring</div>
+                    <div class="monitor-class" id="monitorClassName"></div>
+                </div>
+                <button class="btn-stop-monitor" onclick="stopMonitoring()">■ Stop</button>
+            </div>
+
+            <div id="monitorLoading" class="monitor-loading">
+                <div class="spinner-ring"></div>
+                <span>Loading AI model… (first time may take 10–15s)</span>
+            </div>
+
+            <div id="monitorBody" class="monitor-body" style="display:none">
+                <div class="cam-wrap">
+                    <video id="monVideo" playsinline muted></video>
+                    <canvas id="monCanvas"></canvas>
+                    <div class="cam-status">
+                        <div class="cam-status-dot"></div>
+                        LIVE
+                    </div>
+                </div>
+                <div class="live-stats">
+                    <div class="stat-card">
+                        <div class="stat-val" id="liveScore" style="color:var(--cyan)">--</div>
+                        <div class="stat-label">Attention Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val" id="liveState" style="font-size:1rem;color:var(--green)">--</div>
+                        <div class="stat-label">State</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val" id="liveFatigue" style="color:var(--orange)">--</div>
+                        <div class="stat-label">Fatigue %</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val" id="liveGaze" style="font-size:1rem;color:var(--purple)">--</div>
+                        <div class="stat-label">Gaze</div>
+                    </div>
+                    <div class="stat-card" id="sendStatus" style="border-color:#111">
+                        <div style="font-size:.7rem;color:#333;font-family:'JetBrains Mono',monospace" id="sendStatusText">Waiting…</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/monitor.js"></script>
+    <script>
+        const _jwt  = localStorage.getItem('jwt');
+        const _name = localStorage.getItem('user_name');
+        const _hdrs = { 'Authorization': `Bearer ${_jwt}`, 'Content-Type': 'application/json' };
+
+        document.getElementById('navUser').textContent = _name || 'Student';
+
+        function doLogout() { localStorage.clear(); window.location.replace('/'); }
+        function fmtDur(s) { return `${Math.floor(s/60)}m ${s%60}s`; }
+
+        // ── JOIN ──
+        async function joinClass() {
+            const code  = document.getElementById('classCodeInput').value.trim().toUpperCase();
+            const msgEl = document.getElementById('joinMsg');
+            const btn   = document.getElementById('btnJoin');
+            msgEl.textContent = ''; msgEl.className = 'join-msg';
+            if (code.length !== 6) { msgEl.textContent = '⚠ Code must be exactly 6 characters.'; msgEl.className = 'join-msg error'; return; }
+            btn.disabled = true; btn.textContent = 'Joining…';
+            try {
+                const res  = await fetch(`${API_BASE}/classes/join`, { method:'POST', headers:_hdrs, body:JSON.stringify({class_code:code}) });
+                const data = await res.json();
+                if (res.status === 409) { msgEl.textContent = '✓ Already enrolled.'; msgEl.className = 'join-msg success'; }
+                else if (!res.ok)       { msgEl.textContent = '✕ ' + (data.detail||'Failed to join.'); msgEl.className = 'join-msg error'; }
+                else {
+                    msgEl.textContent = `✅ Joined "${data.class_name}"!`;
+                    msgEl.className = 'join-msg success';
+                    document.getElementById('classCodeInput').value = '';
+                    loadEnrolled();
+                }
+            } catch(e) { msgEl.textContent = '✕ Cannot connect to server.'; msgEl.className = 'join-msg error'; }
+            btn.disabled = false; btn.textContent = 'Join Class →';
+        }
+
+        // ── ENROLLED CLASSES ──
+        async function loadEnrolled() {
+            try {
+                const res = await fetch(`${API_BASE}/classes/enrolled`, { headers:_hdrs });
+                if (res.status === 401) { doLogout(); return; }
+                const classes = await res.json();
+                const grid = document.getElementById('enrolledGrid');
+                if (!classes.length) {
+                    grid.innerHTML = '<div style="color:#333;font-family:\'JetBrains Mono\',monospace;font-size:.8rem;padding:8px">No classes yet — enter a code above to join one.</div>';
+                    return;
+                }
+                grid.innerHTML = classes.map(c => `
+                    <div class="enrolled-card ${c.has_active_session ? 'live' : ''}">
+                        <div class="ec-subject">${c.subject}</div>
+                        <div class="ec-name">${c.name}</div>
+                        <div class="ec-teacher">👤 ${c.teacher_name}</div>
+                        <div class="ec-footer">
+                            <span class="ec-code">${c.class_code}</span>
+                            ${c.has_active_session
+                                ? `<span class="ec-live"><span class="ec-live-dot"></span>SESSION LIVE</span>`
+                                : `<span class="ec-idle">No active session</span>`
+                            }
+                        </div>
+                        ${c.has_active_session
+                            ? `<button class="btn-monitor" onclick="startMonitoring('${c.class_code}','${c.name}')">
+                                   🎯 Start Monitoring
+                               </button>`
+                            : `<button class="btn-monitor" disabled style="opacity:.3;cursor:not-allowed">
+                                   Waiting for session…
+                               </button>`
+                        }
+                    </div>
+                `).join('');
+            } catch(e) {
+                document.getElementById('enrolledGrid').innerHTML =
+                    '<div style="color:var(--red);font-size:.8rem;font-family:\'JetBrains Mono\',monospace">Failed to load classes</div>';
+            }
+        }
+
+        // ── MONITORING ──
+        let _monitor     = null;
+        let _monClassCode = '';
+        let _sendCount   = 0;
+        let _sendOk      = 0;
+
+        async function startMonitoring(classCode, className) {
+            _monClassCode = classCode;
+            document.getElementById('monitorClassName').textContent = `${className} · ${classCode}`;
+            document.getElementById('monitorOverlay').style.display = 'flex';
+            document.getElementById('monitorLoading').style.display = 'flex';
+            document.getElementById('monitorBody').style.display    = 'none';
+            _sendCount = 0; _sendOk = 0;
+
+            try {
+                const video  = document.getElementById('monVideo');
+                const canvas = document.getElementById('monCanvas');
+
+                _monitor = new AttentionMonitor(video, canvas, async (data) => {
+                    // Update live stats UI
+                    const scoreColor = data.score >= 70 ? 'var(--green)' : data.score >= 40 ? 'var(--yellow)' : 'var(--red)';
+                    const stateColor = { 'FOCUSED':'var(--green)','LOW FOCUS':'var(--yellow)','DISTRACTED':'var(--red)','FATIGUED':'var(--orange)' }[data.state] || 'var(--cyan)';
+                    document.getElementById('liveScore').textContent  = data.score.toFixed(0);
+                    document.getElementById('liveScore').style.color  = scoreColor;
+                    document.getElementById('liveState').textContent  = data.state;
+                    document.getElementById('liveState').style.color  = stateColor;
+                    document.getElementById('liveFatigue').textContent = data.fatigue.toFixed(0);
+                    document.getElementById('liveGaze').textContent   = data.gaze;
+
+                    // Send to backend
+                    _sendCount++;
+                    try {
+                        const res = await fetch(`${API_BASE}/send-data`, {
+                            method: 'POST',
+                            headers: _hdrs,
+                            body: JSON.stringify({
+                                class_code: _monClassCode,
+                                score:   data.score,
+                                state:   data.state,
+                                fatigue: data.fatigue,
+                                gaze:    data.gaze,
+                                blinks:  data.blinks,
+                            })
+                        });
+                        if (res.ok) {
+                            _sendOk++;
+                            document.getElementById('sendStatusText').textContent = `✅ Sent ${_sendOk}`;
+                            document.getElementById('sendStatusText').style.color = 'var(--green)';
+                        } else if (res.status === 403) {
+                            document.getElementById('sendStatusText').textContent = '⏸ Session not active';
+                            document.getElementById('sendStatusText').style.color = 'var(--yellow)';
+                        } else if (res.status === 401) {
+                            document.getElementById('sendStatusText').textContent = '🔒 Auth error';
+                            document.getElementById('sendStatusText').style.color = 'var(--red)';
+                        } else {
+                            document.getElementById('sendStatusText').textContent = `⚠ Error ${res.status}`;
+                            document.getElementById('sendStatusText').style.color = 'var(--orange)';
+                        }
+                    } catch(e) {
+                        document.getElementById('sendStatusText').textContent = '✕ Network error';
+                        document.getElementById('sendStatusText').style.color = 'var(--red)';
+                    }
+                });
+
+                await _monitor.start();
+
+                // Show camera feed
+                document.getElementById('monitorLoading').style.display = 'none';
+                document.getElementById('monitorBody').style.display    = 'grid';
+
+            } catch(e) {
+                document.getElementById('monitorLoading').innerHTML =
+                    `<div style="color:var(--red);text-align:center">
+                        <div style="font-size:1.5rem;margin-bottom:8px">⚠</div>
+                        <div>${e.message || 'Failed to start monitoring'}</div>
+                        <div style="margin-top:8px;font-size:.75rem;color:#444">Make sure you allowed camera access</div>
+                        <button onclick="stopMonitoring()" style="margin-top:16px;padding:8px 20px;background:var(--red);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">Close</button>
+                    </div>`;
+            }
+        }
+
+        function stopMonitoring() {
+            if (_monitor) { _monitor.stop(); _monitor = null; }
+            document.getElementById('monitorOverlay').style.display = 'none';
+            loadEnrolled(); // refresh to update live status
+        }
+
+        // ── HISTORY ──
+        async function loadHistory() {
+            try {
+                const res = await fetch(`${API_BASE}/my-history`, { headers:_hdrs });
+                if (res.status === 401) { doLogout(); return; }
+                const history = await res.json();
+                const tbody = document.getElementById('historyBody');
+                if (!history.length) {
+                    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No sessions yet — join a class and click "Start Monitoring" when a session is live</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = history.map(s => `
+                    <tr>
+                        <td style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#888">${s.date}</td>
+                        <td style="font-size:.85rem;color:#ccc">${s.class_name}</td>
+                        <td style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#666">${fmtDur(s.duration_seconds)}</td>
+                        <td><span style="font-family:'JetBrains Mono',monospace;font-weight:700;
+                            color:${s.avg_score>=70?'var(--green)':s.avg_score>=40?'var(--yellow)':'var(--red)'}">
+                            ${s.avg_score.toFixed(1)}</span></td>
+                    </tr>
+                `).join('');
+            } catch(e) {
+                document.getElementById('historyBody').innerHTML =
+                    '<tr class="empty-row"><td colspan="4">Failed to load history</td></tr>';
+            }
+        }
+
+        loadEnrolled();
+        loadHistory();
+        setInterval(loadEnrolled, 10000);
+    </script>
+</body>
+</html>

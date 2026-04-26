@@ -1,7 +1,9 @@
-# Environment secrets — never commit
+# ── Secrets ──
 .env
+*.pem
+*.key
 
-# Python
+# ── Python ──
 __pycache__/
 *.pyc
 *.pyo
@@ -9,8 +11,10 @@ __pycache__/
 venv/
 .venv/
 *.egg-info/
+.pytest_cache/
+.hypothesis/
 
-# Data files
+# ── Runtime data ──
 attention-monitor/data/logs/*.csv
 attention-monitor/data/attention.db
 attention-monitor/data/user_stats.json
@@ -19,11 +23,22 @@ attention-monitor/data/calibration.json
 teacher-system/class_data.db
 teacher-system/teacher_server.log
 attention-monitor/data/logs/attention_monitor.log
+attentionai-classroom/backend/classroom.db
+attentionai-classroom/backend/classroom.db-shm
+attentionai-classroom/backend/classroom.db-wal
 
-# Model file (download separately)
+# ── Model file (too large, download separately) ──
 attention-monitor/models/face_landmarker.task
 
-# IDE
+# ── Local dev only ──
+attentionai-classroom/backend/cert.pem
+attentionai-classroom/backend/key.pem
+attentionai-classroom/backend/gen_cert.py
+
+# ── IDE ──
 .vscode/
 .idea/
 *.swp
+
+# ── Kiro internal ──
+.kiro/

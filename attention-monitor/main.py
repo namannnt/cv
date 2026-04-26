@@ -50,6 +50,7 @@ ensure_model()
 from perception.face_mesh import FaceMeshDetector
 from features.blink import BlinkDetector
 from features.gaze import GazeDetector
+from features.movement import MovementDetector
 from intelligence.scoring import AttentionScorer
 from intelligence.classification import StateClassifier
 from intelligence.fatigue import FatigueDetector
@@ -61,6 +62,7 @@ from intelligence.calibration import CalibrationManager
 from utils.buffer import TimeBuffer
 from utils.temporal_smoother import TemporalSmoother
 from utils.app_logger import get_logger
+from utils.frame_buffer import write as write_frame
 from data.logger import SessionLogger
 from data.database import SessionDB
 
@@ -108,6 +110,79 @@ def send_to_teacher(score, state, fatigue, gaze, blinks):
         except queue.Empty:
             pass
 
+
+# ── Classroom backend integration ──────────────────────────────────────────────
+CLASSROOM_URL       = os.getenv("CLASSROOM_BACKEND_URL", "").rstrip("/")
+CLASSROOM_EMAIL     = os.getenv("CLASSROOM_EMAIL", "")
+CLASSROOM_PASSWORD  = os.getenv("CLASSROOM_PASSWORD", "")
+CLASSROOM_CLASS_CODE = os.getenv("CLASSROOM_CLASS_CODE", "")
+
+_classroom_jwt: str = ""
+_classroom_queue: queue.Queue = queue.Queue(maxsize=10)
+
+def _get_classroom_jwt() -> str:
+    """Login to classroom backend and return JWT. Returns '' on failure."""
+    if not (CLASSROOM_URL and CLASSROOM_EMAIL and CLASSROOM_PASSWORD):
+        return ""
+    try:
+        r = _http_session.post(
+            f"{CLASSROOM_URL}/auth/login",
+            json={"email": CLASSROOM_EMAIL, "password": CLASSROOM_PASSWORD},
+            timeout=5.0
+        )
+        if r.status_code == 200:
+            token = r.json().get("access_token", "")
+            log.info("Classroom backend: logged in successfully")
+            return token
+        else:
+            log.warning(f"Classroom login failed: {r.status_code} {r.text[:100]}")
+    except Exception as e:
+        log.warning(f"Classroom login error: {e}")
+    return ""
+
+def _classroom_sender_worker():
+    global _classroom_jwt
+    while True:
+        payload = _classroom_queue.get()
+        if payload is None:
+            break
+        if not _classroom_jwt:
+            continue
+        try:
+            r = _http_session.post(
+                f"{CLASSROOM_URL}/send-data",
+                json=payload,
+                headers={"Authorization": f"Bearer {_classroom_jwt}"},
+                timeout=2.0
+            )
+            if r.status_code == 401:
+                # JWT expired — re-login once
+                log.info("Classroom JWT expired, re-logging in...")
+                _classroom_jwt = _get_classroom_jwt()
+        except Exception as e:
+            log.debug(f"Classroom send failed: {e}")
+
+def send_to_classroom(score, state, fatigue, gaze, blinks):
+    if not _classroom_active:
+        return
+    payload = {
+        "class_code": CLASSROOM_CLASS_CODE,
+        "score":   round(float(score), 1),
+        "state":   state,
+        "fatigue": round(float(fatigue), 1),
+        "gaze":    gaze if gaze in ("LEFT", "CENTER", "RIGHT", "DOWN") else "CENTER",
+        "blinks":  int(blinks),
+    }
+    try:
+        _classroom_queue.put_nowait(payload)
+    except queue.Full:
+        try:
+            _classroom_queue.get_nowait()
+            _classroom_queue.put_nowait(payload)
+        except queue.Empty:
+            pass
+
+
 # mode select
 print("\nSelect Mode:")
 print("  1. READING")
@@ -116,6 +191,40 @@ print("  3. LECTURE")
 choice = input("Enter choice (1/2/3) [default=1]: ").strip()
 mode_map = {"1": "READING", "2": "PROBLEM_SOLVING", "3": "LECTURE"}
 selected_mode = mode_map.get(choice, "READING")
+
+# ── Classroom integration setup ────────────────────────────────────────────────
+_classroom_active = False
+
+if CLASSROOM_URL:
+    print(f"\n── AttentionAI Classroom ──")
+    print(f"Backend: {CLASSROOM_URL}")
+
+    # Use env vars if set, otherwise prompt
+    _email = CLASSROOM_EMAIL or input("Student email (leave blank to skip): ").strip()
+    if _email:
+        import getpass as _gp
+        _password = CLASSROOM_PASSWORD or _gp.getpass("Student password: ")
+        _code     = CLASSROOM_CLASS_CODE or input("Class code (6 chars): ").strip().upper()
+
+        if _email and _password and _code:
+            CLASSROOM_EMAIL      = _email
+            CLASSROOM_PASSWORD   = _password
+            CLASSROOM_CLASS_CODE = _code
+
+            _classroom_jwt = _get_classroom_jwt()
+            if _classroom_jwt:
+                _classroom_thread = threading.Thread(target=_classroom_sender_worker, daemon=True)
+                _classroom_thread.start()
+                _classroom_active = True
+                print(f"✅ Classroom connected — class {CLASSROOM_CLASS_CODE}")
+            else:
+                print("⚠  Classroom login failed — running without classroom integration")
+        else:
+            print("⚠  Skipping classroom integration (incomplete credentials)")
+    else:
+        print("⚠  Skipping classroom integration")
+else:
+    log.info("CLASSROOM_BACKEND_URL not set — classroom integration disabled")
 
 # init
 cap              = cv2.VideoCapture(0)
@@ -137,6 +246,7 @@ gamification     = Gamification()
 intervention     = InterventionSystem()
 calibration      = CalibrationManager()
 log.info(f"Calibration loaded: {calibration.summary()}")
+movement_detector = MovementDetector()
 
 score_smoother = TemporalSmoother(window_seconds=1.0)
 last_log_time  = 0
@@ -190,18 +300,24 @@ while True:
 
         gaze_w, blink_w = context.get_weights()
 
+        nose_pos = landmarks[1]
+        movement_penalty = movement_detector.update(nose_pos)
+
         raw_score = scorer.calculate(gaze, off_time, eye_closed, blink_rate,
                                      blink_threshold,
                                      gaze_w * calibration.gaze_scale,
-                                     blink_w)
+                                     blink_w,
+                                     movement_penalty)
 
         score      = score_smoother.update(raw_score)
         confidence = score_smoother.get_confidence()
 
+        fatigue_thresh = personalization.get_fatigue_threshold()
+        off_thresh     = personalization.get_off_threshold()
         state       = classifier.classify(score, off_time,
                                           fatigue_score,
-                                          calibration.fatigue_threshold,
-                                          personalization.get_off_threshold())
+                                          fatigue_thresh,
+                                          off_thresh)
         state_color  = STATE_COLORS.get(state, (255, 255, 255))
         learning_tag = " [LEARNING]" if personalization.learning else ""
 
@@ -228,6 +344,7 @@ while True:
             logger.log(score, state, blink_rate, gaze, off_time, fatigue_score)
             session_db.log(score, state, blink_rate, gaze, off_time, fatigue_score)
             send_to_teacher(score, state, fatigue_score, gaze, blink_count)
+            send_to_classroom(score, state, fatigue_score, gaze, blink_count)
             last_log_time = time.time()
 
         if fatigue_score >= 60:
@@ -240,11 +357,16 @@ while True:
 
     else:
         gaze, off_time = gaze_detector.update_off_screen("CENTER", face_detected=False)
+        movement_detector.reset()
         log.debug("Face not detected — gaze timer preserved")
         cv2.putText(frame, "Face not detected",            (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         cv2.putText(frame, f"Off-screen: {off_time:.1f}s", (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
     cv2.imshow("Attention Monitor", frame)
+
+    # encode frame as JPEG and push to shared buffer for web stream
+    _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+    write_frame(jpeg.tobytes())
 
     if cv2.waitKey(1) & 0xFF == 27:
         break

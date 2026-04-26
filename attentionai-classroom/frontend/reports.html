@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports — AttentionAI Classroom</title>
+    <script>
+        (function() {
+            var jwt  = localStorage.getItem('jwt');
+            var role = localStorage.getItem('role');
+            if (!jwt || role !== 'teacher') {
+                window.location.replace('/');
+                document.documentElement.style.display = 'none';
+            }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    <style>
+        /* ── Detail modal ── */
+        .detail-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.85);
+            backdrop-filter: blur(10px); z-index: 300;
+            display: flex; align-items: flex-start; justify-content: center;
+            padding: 24px; overflow-y: auto;
+        }
+        .detail-panel {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 32px; width: 100%; max-width: 860px;
+            position: relative; margin: auto;
+        }
+        .detail-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--cyan), var(--purple), transparent);
+        }
+        .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+        .detail-title  { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .detail-sub    { font-size: .78rem; color: #444; font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+        .btn-close-detail {
+            padding: 7px 18px; background: transparent; color: #555;
+            border: 1px solid #222; border-radius: 8px; cursor: pointer;
+            font-size: .82rem; font-family: 'Inter', sans-serif;
+        }
+        .btn-close-detail:hover { color: #fff; border-color: #444; }
+
+        /* Stats row */
+        .detail-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+        .ds-card { background: #0a0a18; border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
+        .ds-val   { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; }
+        .ds-label { font-size: .65rem; color: #444; text-transform: uppercase; letter-spacing: .5px; margin-top: 3px; }
+
+        /* State breakdown bars */
+        .breakdown-section { margin-bottom: 28px; }
+        .breakdown-title { font-size: .75rem; color: #555; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+        .state-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .state-row-label { width: 90px; font-size: .78rem; font-family: 'JetBrains Mono', monospace; color: #888; }
+        .state-bar-bg { flex: 1; height: 8px; background: #111; border-radius: 4px; overflow: hidden; }
+        .state-bar-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+        .state-row-pct { width: 44px; text-align: right; font-size: .75rem; font-family: 'JetBrains Mono', monospace; color: #555; }
+        .state-row-dur { width: 60px; text-align: right; font-size: .72rem; color: #333; font-family: 'JetBrains Mono', monospace; }
+
+        /* Episodes */
+        .episodes-section { margin-bottom: 28px; }
+        .episode-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 14px; background: #0a0a18;
+            border: 1px solid #ff174415; border-radius: 8px; margin-bottom: 6px;
+        }
+        .ep-icon  { font-size: 1rem; }
+        .ep-label { font-size: .82rem; color: #ccc; flex: 1; }
+        .ep-dur   { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--red); }
+
+        /* Fatigue info */
+        .fatigue-info { display: flex; gap: 16px; margin-bottom: 28px; }
+        .fi-card { flex: 1; background: #0a0a18; border: 1px solid #ff6b3522; border-radius: 12px; padding: 16px; }
+        .fi-label { font-size: .7rem; color: #555; text-transform: uppercase; letter-spacing: .5px; font-family: 'JetBrains Mono', monospace; margin-bottom: 6px; }
+        .fi-val   { font-size: 1rem; font-weight: 700; color: var(--orange); font-family: 'JetBrains Mono', monospace; }
+
+        /* Gaze distribution */
+        .gaze-row { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
+        .gaze-chip {
+            padding: 6px 14px; border-radius: 100px; font-size: .78rem;
+            font-family: 'JetBrains Mono', monospace; border: 1px solid var(--border);
+            background: #0a0a18;
+        }
+
+        /* Timeline chart */
+        .chart-section { margin-bottom: 8px; }
+        .chart-section canvas { max-height: 180px; }
+
+        /* Clickable session row */
+        .session-row-clickable { cursor: pointer; transition: background .15s; }
+        .session-row-clickable:hover { background: #0a0a18 !important; }
+        .session-row-clickable td:first-child::before { content: '▶ '; color: var(--cyan); font-size: .7rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><span class="logo-bracket">[</span>📈 Reports<span class="logo-bracket">]</span></div>
+        <div class="nav-right">
+            <span class="nav-user" id="navUser"></span>
+            <button class="nav-btn" onclick="window.location.href='/teacher'">← Dashboard</button>
+            <button class="nav-btn danger" onclick="doLogout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showReportTab('sessions')">Session History</button>
+        <button class="tab-btn" onclick="showReportTab('students')">Student Summaries</button>
+    </div>
+
+    <div style="padding:20px 40px 0;display:flex;align-items:center;gap:12px">
+        <label style="font-size:.75rem;color:#555;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px">Batch</label>
+        <select id="batchSelect" onchange="loadReports()"
+            style="background:#0a0a18;color:#e0e0e0;border:1px solid var(--border);padding:8px 14px;border-radius:8px;font-size:.85rem;outline:none;cursor:pointer">
+            <option value="">Select a batch…</option>
+        </select>
+    </div>
+
+    <!-- Session History -->
+    <div id="tab-sessions" class="tab-content active">
+        <div class="page-header">
+            <h2>Session <span class="highlight">History</span></h2>
+            <p>Click a session row to see detailed per-student breakdown</p>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Date</th><th>Duration</th><th>Avg Score</th><th>Distractions</th></tr></thead>
+                <tbody id="sessionsBody">
+                    <tr class="empty-row"><td colspan="4">Select a batch to view history</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Student Summaries -->
+    <div id="tab-students" class="tab-content">
+        <div class="page-header">
+            <h2>Student <span class="highlight">Summaries</span></h2>
+            <p>Last 30 days performance per student</p>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Student</th><th>Sessions Attended</th><th>Avg Score</th><th>Trend</th></tr></thead>
+                <tbody id="studentsBody">
+                    <tr class="empty-row"><td colspan="4">Select a batch to view summaries</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="detail-overlay" id="detailOverlay" style="display:none" onclick="if(event.target===this)closeDetail()">
+        <div class="detail-panel" id="detailPanel">
+            <div class="detail-header">
+                <div>
+                    <div class="detail-title" id="detailTitle">Session Detail</div>
+                    <div class="detail-sub" id="detailSub"></div>
+                </div>
+                <button class="btn-close-detail" onclick="closeDetail()">✕ Close</button>
+            </div>
+            <div id="detailContent">
+                <div style="text-align:center;padding:40px;color:#444;font-family:'JetBrains Mono',monospace">Loading…</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/reports.js"></script>
+</body>
+</html>

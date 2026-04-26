@@ -112,11 +112,13 @@ class StudentData(BaseModel):
 # ── Routes ──
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    # FIX 4: inject token into template so JS can use it for WS auth
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "api_token": API_TOKEN
-    })
+    # Read template, inject token manually to avoid Jinja2 cache key bug
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "dashboard.html")
+    with open(template_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("{{ api_token }}", str(API_TOKEN))
+    return HTMLResponse(content=html)
 
 
 # ── FIX 8: Rate-limited send-data ──

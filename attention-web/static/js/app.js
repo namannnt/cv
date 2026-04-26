@@ -403,3 +403,51 @@ function _showFeedbackSection(sessionId) {
         }
     }).catch(() => {});
 }
+
+// ══ CAMERA PREVIEW (Option A — local only, no video transmitted) ══
+async function startCameraPreview() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480, facingMode: 'user' },
+            audio: false
+        });
+        const video   = document.getElementById('cameraFeed');
+        const overlay = document.getElementById('cameraOverlay');
+        const box     = document.getElementById('cameraBox');
+
+        video.srcObject = stream;
+        video.classList.add('active');
+        overlay.classList.add('hidden');
+        box.classList.add('live');
+
+        // store stream so we can stop it later
+        window._cameraStream = stream;
+
+    } catch (err) {
+        const overlay = document.getElementById('cameraOverlay');
+        if (overlay) {
+            overlay.innerHTML = `<div style="text-align:center;padding:20px;color:#ff1744;font-size:.8rem;font-family:'JetBrains Mono',monospace">
+                ⚠ Camera access denied<br><span style="color:#444;font-size:.7rem">Allow camera in browser settings</span>
+            </div>`;
+        }
+    }
+}
+
+function stopCameraPreview() {
+    if (window._cameraStream) {
+        window._cameraStream.getTracks().forEach(t => t.stop());
+        window._cameraStream = null;
+        const video = document.getElementById('cameraFeed');
+        if (video) { video.srcObject = null; video.classList.remove('active'); }
+        const box = document.getElementById('cameraBox');
+        if (box) box.classList.remove('live');
+    }
+}
+
+// auto-start camera when Home tab is active
+const _origShowTab = showTab;
+// override showTab to handle camera
+window.showTab = function(name) {
+    _origShowTab(name);
+    if (name !== 'home') stopCameraPreview();
+};

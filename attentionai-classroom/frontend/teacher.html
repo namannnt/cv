@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard — AttentionAI Classroom</title>
+    <!-- Auth guard -->
+    <script>
+        (function() {
+            var jwt  = localStorage.getItem('jwt');
+            var role = localStorage.getItem('role');
+            if (!jwt || role !== 'teacher') {
+                window.location.replace('/');
+                document.documentElement.style.display = 'none';
+            }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><span class="logo-bracket">[</span>🎓 AttentionAI Classroom<span class="logo-bracket">]</span></div>
+        <div class="nav-right">
+            <span class="nav-user" id="navUser"></span>
+            <button class="nav-btn danger" onclick="doLogout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTeacherTab('batches')">📚 Batches</button>
+        <button class="tab-btn" onclick="showTeacherTab('dashboard')">📊 Live Dashboard</button>
+        <button class="tab-btn" onclick="window.location.href='/reports'">📈 Reports</button>
+    </div>
+
+    <!-- BATCHES TAB -->
+    <div id="tab-batches" class="tab-content active">
+        <div class="page-header">
+            <h2>Your <span class="highlight">Batches</span></h2>
+            <p>Create and manage your student batches</p>
+        </div>
+
+        <div class="create-batch-form">
+            <input type="text" id="newBatchName" placeholder="Batch name (e.g. Batch A, Morning Group)">
+            <button onclick="createBatch()">+ Create Batch</button>
+        </div>
+        <div class="error-msg" id="batchError"></div>
+
+        <div class="batch-list" id="batchList">
+            <div style="color:#333;font-family:'JetBrains Mono',monospace;font-size:.8rem;padding:20px">Loading batches...</div>
+        </div>
+    </div>
+
+    <!-- LIVE DASHBOARD TAB -->
+    <div id="tab-dashboard" class="tab-content">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+                <h2>Live <span class="highlight">Dashboard</span></h2>
+                <p id="dashSubtitle">Select a batch and start a session to monitor students</p>
+            </div>
+            <button id="btnEndFromDash" class="nav-btn danger" style="display:none" onclick="endSessionFromDash()">■ End Session</button>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card" style="--accent:#00e5ff">
+                <span class="metric-icon">👥</span>
+                <div class="metric-val" id="metOnline">0</div>
+                <div class="metric-label">Online</div>
+            </div>
+            <div class="metric-card" style="--accent:#00ff88">
+                <span class="metric-icon">📊</span>
+                <div class="metric-val" id="metAvg">--</div>
+                <div class="metric-label">Avg Score</div>
+            </div>
+            <div class="metric-card" style="--accent:#ff1744">
+                <span class="metric-icon">🔥</span>
+                <div class="metric-val" id="metDistracted">0</div>
+                <div class="metric-label">Distracted</div>
+            </div>
+            <div class="metric-card" style="--accent:#ff6b35">
+                <span class="metric-icon">😴</span>
+                <div class="metric-val" id="metFatigued">0</div>
+                <div class="metric-label">Fatigued</div>
+            </div>
+        </div>
+
+        <div class="alert-bar" id="alertBar"></div>
+
+        <div class="table-wrap">
+            <div class="table-header">
+                <h3>🧠 Student Attention Monitor</h3>
+                <span style="font-size:.72rem;color:#333;font-family:'JetBrains Mono',monospace">Auto-refresh: <span style="color:var(--cyan)">2s</span></span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Score</th>
+                        <th>State</th>
+                        <th>Fatigue</th>
+                        <th>Gaze</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                    <tr class="empty-row"><td colspan="6">Start a session to see live data</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'attention-monitor'))
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
 import glob
 import pandas as pd
 import json
@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from intelligence.calibration import CalibrationManager, store_feedback
 from utils.app_logger import get_logger
+from utils.frame_buffer import read as read_frame
 
 # ── FIX 1: Load .env ──
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -59,6 +60,31 @@ def _update_gamification(avg_score, focus_minutes):
             json.dump(data, f, indent=4)
     except Exception:
         pass
+
+
+@app.route("/video_feed")
+def video_feed():
+    """MJPEG stream of the annotated CV frames from main.py."""
+    def generate():
+        import time
+        while True:
+            frame = read_frame()
+            if frame:
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            else:
+                # send a placeholder black frame when no session running
+                import cv2, numpy as np
+                blank = np.zeros((360, 640, 3), dtype=np.uint8)
+                cv2.putText(blank, "Start a session to see live feed",
+                            (80, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 229, 255), 2)
+                _, jpeg = cv2.imencode('.jpg', blank)
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
+            time.sleep(0.033)  # ~30fps
+
+    return Response(generate(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 @app.route("/")
